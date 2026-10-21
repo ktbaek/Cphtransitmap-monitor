@@ -4,10 +4,8 @@ This project detects changes to the Copenhagen-area rail network using a [GTFS](
 
 ## Status
 - **Map version:** see `mapversion` in `config/map_*.yml.`
-- **Map last synced to snapshot:** `<gtfs_YYYYMMDD>`
+- **Map last synced to snapshot:** `<gtfs_20260921>`
 - **Snapshot valid until:** `<YYYY-MM-DD>`
-
-Update these lines when you finish [step 6](#6-update-the-map-and-record-the-result).
 
 ## Data
 Access to the data requires authorization from Rejseplanen Labs. The GTFS data is not included in this repository and is subject to Rejseplanen Labs' terms. Unzipped feeds go in `data/`.
@@ -177,15 +175,14 @@ The bands are the windows the script tests, not full coverage of the day: peak 0
   | `--schema` | *Required* | Snapshot schema, e.g. `gtfs_20260921` |
 
 #### `derive_stop_triplets.py`
-Creates table `stop_triplets` (prev, stop, next), one row per (pattern, position), attributed to the route it comes from. Columns: `<list columns>`. See [Triplets](#triplets). 
+Creates table `stop_triplets` (prev, stop, next), one row per (pattern, position), attributed to the route it comes from. Columns: `route_id`, `route_short_name`, `direction_id`, `pattern_id`, `n_trips`, `prev_stop_id`, `stop_id`, `next_stop_id`. See [Triplets](#triplets). 
 
   | Option | Default | Description |
   | :--- | :--- | :--- |
   | `--schema` | *Required* | Snapshot schema, e.g. `gtfs_20260921` |
 
 ### Visualization helpers
-These scripts generate GeoJSON files of the shapes in the GTFS data, for a visual overview. They
-are not required for any analysis.
+These scripts generate GeoJSON files of the shapes in the GTFS data, for a visual overview. They are not required for any analysis.
 
 #### `export_geojson.py`
 Shapes + stops per agency, with far-away geometry grouped onto
@@ -214,8 +211,7 @@ A single `shape_id`, no joins, for quick spot checks.
 See `output/` for example exports.
 
 ### Checking against the current map
-These scripts check whether the topology and service patterns shown on the map are consistent
-with the GTFS data, using the hand-maintained files described under [Config files](#config-files).
+These scripts check whether the topology and service patterns shown on the map are consistent with the GTFS data, using the hand-maintained files described under [Config files](#config-files).
 
 #### `check_map_corridors.py`
 Print-only. Checks `stop_triplets` against the corridors in `config/map_corridors.yml` (matching rules under [Corridor](#corridor)). Reports unknown stops, conflicts, and corridor stops not served by the corridor's routes.
@@ -235,10 +231,7 @@ Print-only. Checks view `service_pattern` against `config/map_service_patterns.y
 
 ### Common options
 Every script above also accepts these, defined once in `gtfs_common.py` and resolved into a
-connection by `connect_from_args()`. You normally don't need to pass any of them: with nothing
-set, every script reads the `default` block of `config/db.yml`. They exist so a single run can be
-pointed elsewhere — e.g. a different environment via `--config-env`, or a different database
-entirely via `--dsn`.
+connection by `connect_from_args()`. You normally don't need to pass any of them: with nothing set, every script reads the `default` block of `config/db.yml`. They exist so a single run can be pointed elsewhere — e.g. a different environment via `--config-env`, or a different database entirely via `--dsn`.
 
 | Option | Default | Description |
 | :--- | :--- | :--- |
@@ -294,9 +287,7 @@ routes:
 - **Shapes.** When visually inspecting routes, note that not all shapes in the feed's `shapes.txt` provide geographical detail between stops.
 
 ## To do
-- `transfers.txt` is loaded (`load_gtfs.py`'s `GTFS_FILES`) into a raw `transfers` table, but
-  nothing reads it yet. Could be used to check rail-to-rail interchanges against the map's drawn
-  connections (e.g. Nørreport St. ↔ Nørreport St. (Metro)).
+- `transfers.txt` is loaded (`load_gtfs.py`'s `GTFS_FILES`) into a raw `transfers` table, but nothing reads it yet. Could be used to check rail-to-rail interchanges against the map's drawn connections (e.g. Nørreport St. ↔ Nørreport St. (Metro)).
 - A snapshot diff script, replacing the manual `EXCEPT` queries in [step 5](#5-compare-with-the-previous-snapshot).
 - Other diffing/exploratory SQL queries to aid understanding of the network.
 

@@ -1,7 +1,7 @@
 # Map lines encoded as canonical corridors: maximum length, all stops, in order.
 # Stop names must match rail_stops.stop_name exactly (metro stations end in "(Metro)"), runs of whitespace tolerated.
 # Triplets are only checked against corridors of their own group or route (if stated).
-mapversion: "1.4.1"
+mapversion: "1.4.2"
 
 groups:
   metro:    {agencies: ['319']}
@@ -399,7 +399,7 @@ corridors:
       - Favrholm St.
       - Hillerød St.
 
-  Gribskovbanen:
+  Gribskovbanen-Gilleleje:
     group: lokaltog
     stops:
       - Gilleleje St.
@@ -414,7 +414,7 @@ corridors:
       - Slotspavillonen St.
       - Hillerød St.
   
-  Tisvildelejebanen:
+  Gribskovbanen-Tisvildeleje:
     group: lokaltog
     stops:
       - Tisvildeleje St.
@@ -422,7 +422,7 @@ corridors:
       - Holløse St.
       - Vejby St.
       - Ørby St.
-      - Laugø St. 
+      - Troldebakkerne St. 
       - Helsinge St.
       - Duemose St.
       - Kagerup St. (Hillerød)

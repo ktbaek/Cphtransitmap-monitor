@@ -20,7 +20,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-The R scripts in `R/` (optional, used for plots in steps 3 and 5) need R with `tidyverse`, `glue`, `DBI`, `RPostgres` and `yaml`. Open `cphtransitmap-monitor.Rproj` or run them from the project root.
+The R scripts in `R/` (optional, used for plots in steps 3 and 5) need R with `tidyverse`, `glue`, `DBI`, `RPostgres` and `yaml`.
 
 Connection settings go in `config/db.yml` (block `default`; password optional, falls back to `PGPASSWORD`). The database must already exist.
 
@@ -49,10 +49,10 @@ python py/derive_service_days.py --schema gtfs_YYYYMMDD
 python py/derive_trip_patterns.py --schema gtfs_YYYYMMDD
 python py/derive_stop_triplets.py --schema gtfs_YYYYMMDD
 python py/derive_pattern_days.py --schema gtfs_YYYYMMDD
-python py/derive_service_pattern.py --schema gtfs_YYYYMMDD --week YYYY-MM-DD
+python py/derive_service_pattern.py --schema gtfs_YYYYMMDD --all-weeks
 ```
 
-`--week` is the Monday of the week to derive; repeat it for several weeks, or use `--all-weeks` (see [Weeks](#weeks)). Pick weeks without public holidays.
+`--week` is the Monday of the week to derive; Generally use `--all-weeks` (see [Weeks](#weeks)).
 
 Each script needs the ones above it, with two exceptions: `derive_service_pattern.py` only needs `derive_service_days.py`, and `derive_stop_triplets.py` and `derive_pattern_days.py` only need `derive_trip_patterns.py` (either order). A script stops with a message naming the missing step if a prerequisite table doesn't exist. If you re-run `derive_trip_patterns.py`, re-run `derive_stop_triplets.py`, `derive_pattern_days.py` and the corridor check too, because `pattern_id`s change.
 
@@ -81,7 +81,7 @@ JOIN gtfs_<new>.agency a ON a.agency_id = r.agency_id
 GROUP BY 1, 2
 ORDER BY 2, 1;
 ```
-The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Beyond that date, checks for that agency are missing data, so re-fetch when its next timetable is published.
+The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Beyond that date, checks are missing data, so re-fetch when the next timetable is published.
 
 Plot the third query (one panel per agency) with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png`, and also `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
 - **An agency that stops early.** Its next timetable isn't in this feed yet, so plan to re-fetch once it is published. Checks against the map for the later weeks would show its corridors as unserved, which is missing data and not a closure.
@@ -94,7 +94,7 @@ python py/check_map_corridors.py --schema gtfs_YYYYMMDD
 python py/check_map_corridors.py --schema gtfs_YYYYMMDD --from YYYY-MM-DD --to YYYY-MM-DD
 python py/check_map_service_patterns.py --schema gtfs_YYYYMMDD --week YYYY-MM-DD
 ```
-The corridor check covers the whole feed unless you give a window, and prints one numbered finding per line, with when the conflicting patterns run. It also saves the findings (see [Findings](#findings)). The service pattern check covers one week and only prints. Read the output for:
+The corridor check covers the whole feed unless you give a window, and prints one numbered finding per line, as well as the conflicting patterns that run. It also saves the findings (see [Findings](#findings)). The service pattern check covers one week and only prints. Read the output for:
 - **Corridor stops not in feed**: a stop name in `map_corridors.yml` that isn't in the feed's `rail_stops`. Could be a closed or renamed station, or a typo in the corridor file. These stops are left out of the corridor's checks, so the other findings below still run.
 - **Unknown stops**: served, but on no map corridor in scope. Usually a new or renamed station. A rename often also appears under "Corridor stops not in feed" with the old name.
 - **Conflicts**: a triplet the map's corridors can't explain, meaning routing has changed, the route is a temporary diversion, or the map is wrong. See [step 5](#5-judge-the-findings).
@@ -105,7 +105,7 @@ The corridor check covers the whole feed unless you give a window, and prints on
 *Known false positives*: Høvelte St., early morning trips of S-tog route H from Frederikssund St., afternoon trips of S-tog route F to Klampenborg St. See [Gotchas](#gotchas).
 
 ### 5. Judge the findings
-Most conflicts are temporary: diversions and track work around København Syd are typical. What separates them from a real change is when they run, so plot the findings against `pattern_days` (the saved `map_check_findings` table joins to it on `pattern_id`). [`R/plot_conflicts.R`](R/plot_conflicts.R) does this: set `gtfs_schema` at the top, and it writes `output/conflicts_<schema>.png` with one row per finding and a dot per day the patterns run (dot size is `n_trips`), for the whole feed. The plot's x-axis is limited to the range of `service_days`. The query behind it is:
+Most conflicts are probably temporary such as diversions and track work. What separates them from a real change is when they run, so plot the findings against `pattern_days` (the saved `map_check_findings` table joins to it on `pattern_id`). [`R/plot_conflicts.R`](R/plot_conflicts.R) does this: set `gtfs_schema` at the top, and it writes `output/conflicts_<schema>.png` with one row per finding and a dot per day the patterns run (dot size is `n_trips`), for the whole feed. The plot's x-axis is limited to the range of `service_days`. The query behind it is:
 
 ```sql
 SELECT f.finding_id, f.stop_name, pd.date, pd.pattern_id, pd.n_trips

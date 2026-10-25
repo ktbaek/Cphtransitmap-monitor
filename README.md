@@ -81,7 +81,7 @@ JOIN gtfs_<new>.agency a ON a.agency_id = r.agency_id
 GROUP BY 1, 2
 ORDER BY 2, 1;
 ```
-The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Ignore a gap of a few days to the feed end, which is usually a partial week, and decide whether a minor agency that ends early should hold back the date. Beyond that date, checks for that agency are missing data, so re-fetch when its next timetable is published.
+The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Beyond that date, checks for that agency are missing data, so re-fetch when its next timetable is published.
 
 Plot the third query (one panel per agency) with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png`, and also `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
 - **An agency that stops early.** Its next timetable isn't in this feed yet, so plan to re-fetch once it is published. Checks against the map for the later weeks would show its corridors as unserved, which is missing data and not a closure.

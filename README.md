@@ -4,8 +4,9 @@ This project detects changes to the Copenhagen-area rail network using a [GTFS](
 
 ## Status
 - **Map version:** see `mapversion` in `config/map_*.yml.`
-- **Map last synced to snapshot:** `<gtfs_20260921>`
-- **Snapshot valid until:** `<YYYY-MM-DD>`
+- **Map last synced to snapshot:** `<gtfs_20261019>`
+- **Feed ends:** `<2027-01-13>` (last day in `service_days`)
+- **Map verified until:** `<2026-12-12>` (earliest last day among the agencies on the map, `<agency>`; see [step 3](#3-check-what-the-feed-covers))
 
 ## Data
 Access to the data requires authorization from Rejseplanen Labs. The GTFS data is not included in this repository and is subject to Rejseplanen Labs' terms. Unzipped feeds go in `data/`.
@@ -64,6 +65,14 @@ A feed spans a couple of months and can contain a timetable change, and agencies
 SELECT min(date) AS first_day, max(date) AS last_day
 FROM gtfs_<new>.service_days;
 
+SELECT a.agency_name, min(pd.date) AS first_day, max(pd.date) AS last_day
+FROM gtfs_<new>.pattern_days pd
+JOIN gtfs_<new>.trip_patterns tp USING (pattern_id)
+JOIN gtfs_<new>.routes r ON r.route_id = tp.route_id
+JOIN gtfs_<new>.agency a ON a.agency_id = r.agency_id
+GROUP BY 1
+ORDER BY 3;
+
 SELECT pd.date, a.agency_name, sum(pd.n_trips) AS n_trips
 FROM gtfs_<new>.pattern_days pd
 JOIN gtfs_<new>.trip_patterns tp USING (pattern_id)
@@ -72,7 +81,9 @@ JOIN gtfs_<new>.agency a ON a.agency_id = r.agency_id
 GROUP BY 1, 2
 ORDER BY 2, 1;
 ```
-Plot the second query (one panel per agency) with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png`, and also `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
+The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Ignore a gap of a few days to the feed end, which is usually a partial week, and decide whether a minor agency that ends early should hold back the date. Beyond that date, checks for that agency are missing data, so re-fetch when its next timetable is published.
+
+Plot the third query (one panel per agency) with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png`, and also `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
 - **An agency that stops early.** Its next timetable isn't in this feed yet, so plan to re-fetch once it is published. Checks against the map for the later weeks would show its corridors as unserved, which is missing data and not a closure.
 - **A step change** (e.g. mid-December): a timetable change. Run the checks separately for the periods before and after it (`--from`/`--to`, and one `--week` per period).
 - **Dips** on public holidays. Avoid those weeks for service patterns.

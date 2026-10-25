@@ -40,11 +40,11 @@ conflicts |>
     date_breaks = "1 week",
     date_minor_breaks = "1 day",
     limits = as_date(calendar_limits)) +
-  scale_size_area(max_size = 2, guide = "none") +
+  scale_size_area("Number of trips", max_size = 2, guide = "legend") +
   facet_grid(rows = vars(kind, routes), scales = "free_y") +
   theme(
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
     strip.text.y = element_text(angle = 0)
   )
 
-ggsave(glue("output/conflicts_{gtfs_schema}.png"), unit = "cm", width = 30, height = 20, dpi = 300) # adjust dims if necessary
+ggsave(glue("output/conflicts_{gtfs_schema}.png"), unit = "cm", width = 35, height = 20, dpi = 300) # adjust dims if necessary

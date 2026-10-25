@@ -50,8 +50,9 @@ ORDER BY 2, 1;
 
 agency_trips |> 
   ggplot() +
-  geom_area(aes(date, n_trips)) +
-  labs(y = "Number of trips") +
-  facet_grid(vars(agency_name))
+  geom_area(aes(date, n_trips), alpha = 0.5) +
+  geom_line(aes(date, n_trips)) +
+  labs(x = "Date", y = "Number of trips") +
+  facet_grid(vars(agency_name), scales = "free_y")
 
 ggsave(glue("output/agency_trips_{gtfs_schema}.png"), unit = "cm", width = 20, height = 40, dpi = 300) 

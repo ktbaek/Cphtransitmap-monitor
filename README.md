@@ -6,7 +6,7 @@ This project detects changes to the Copenhagen-area rail network using a [GTFS](
 - **Map version:** see `mapversion` in `config/map_*.yml.`
 - **Map last synced to snapshot:** `gtfs_20261019`
 - **Feed ends:** `2027-01-13` (last day in `service_days`)
-- **Map verified until:** `2026-12-12` (earliest last day among the agencies on the map, `<agency>`; see [step 3](#3-check-what-the-feed-covers))
+- **Map verified until:** `2026-12-12` (earliest last day among the agencies on the map; see [step 3](#3-check-what-the-feed-covers))
 
 ## Data
 Access to the data requires authorization from Rejseplanen Labs. The GTFS data is not included in this repository and is subject to Rejseplanen Labs' terms. Unzipped feeds go in `data/`.

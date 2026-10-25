@@ -41,7 +41,7 @@ conflicts |>
     date_minor_breaks = "1 day",
     limits = as_date(calendar_limits)) +
   scale_size_area("Number of trips", max_size = 2, guide = "legend") +
-  facet_grid(rows = vars(kind, routes), scales = "free_y") +
+  facet_grid(rows = vars(kind, routes), scales = "free_y", space = "free_y") +
   theme(
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
     strip.text.y = element_text(angle = 0)

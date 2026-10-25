@@ -5,8 +5,9 @@ export_geojson.py
 Export rail line shapes and stops for one or more agencies as a single GeoJSON
 FeatureCollection, for visual inspection of the network (e.g. in geojson.io or
 QGIS). LineString features come from `shapes` (joined to route_id/route_short_name
-via regular_rail_trips, or rail_trips with --all-services), Point features
-from the `rail_stops` view.
+via rail_trips), Point features from the `rail_stops` view. Only trips whose
+service runs on at least one day in service_days are used, so services that
+never run are left out (requires derive_service_days.py).
 
 To keep files small and readable, geometry outside the Copenhagen area
 (config/cph_area.geojson) is collapsed onto a handful of fixed destination
@@ -18,8 +19,8 @@ same destination are merged into a single Point feature. Pass --no-group to
 disable all of this and export raw, full-detail coordinates instead.
 
 Usage:
-    python export_geojson.py --schema gtfs_20260921 --agency 203
-    python export_geojson.py --schema gtfs_20260921 --agency 203 --agency 318 --no-group
+    python py/export_geojson.py --schema gtfs_20260921 --agency 203
+    python py/export_geojson.py --schema gtfs_20260921 --agency 203 --agency 318 --no-group
 """
 
 import argparse
@@ -28,6 +29,7 @@ import json
 from pathlib import Path
 
 from gtfs_common import add_connection_args, connect_from_args
+from gtfs_weeks import require_table
 
 
 def load_polygon(path: Path):
@@ -109,16 +111,17 @@ def make_classifier(cph_area, destinations, group: bool):
     return classify
 
 
-def export_lines(conn, schema: str, agency_ids, classify, group: bool, trips_view: str):
+def export_lines(conn, schema: str, agency_ids, classify, group: bool):
     with conn.cursor() as cur:
         cur.execute(
             f'''
             SELECT DISTINCT r.route_id, r.route_short_name, sh.shape_id, a.agency_id
             FROM "{schema}".shapes sh
-            JOIN "{schema}".{trips_view} t USING (shape_id)
+            JOIN "{schema}".rail_trips t USING (shape_id)
             JOIN "{schema}".routes r USING (route_id)
             JOIN "{schema}".agency a USING (agency_id)
             WHERE a.agency_id = ANY(%s)
+              AND t.service_id IN (SELECT service_id FROM "{schema}".service_days)
             ''',
             (agency_ids,),
         )
@@ -174,7 +177,7 @@ def export_lines(conn, schema: str, agency_ids, classify, group: bool, trips_vie
     return features
 
 
-def export_stops(conn, schema: str, agency_ids, classify, group: bool, trips_view: str):
+def export_stops(conn, schema: str, agency_ids, classify, group: bool):
     with conn.cursor() as cur:
         cur.execute(
             f'''
@@ -182,10 +185,11 @@ def export_stops(conn, schema: str, agency_ids, classify, group: bool, trips_vie
                    array_agg(DISTINCT r.route_short_name ORDER BY r.route_short_name) AS route_short_names
             FROM "{schema}".rail_stops s
             JOIN "{schema}".rail_stop_times st USING (stop_id)
-            JOIN "{schema}".{trips_view} t USING (trip_id)
+            JOIN "{schema}".rail_trips t USING (trip_id)
             JOIN "{schema}".routes r USING (route_id)
             JOIN "{schema}".agency a USING (agency_id)
             WHERE a.agency_id = ANY(%s)
+              AND t.service_id IN (SELECT service_id FROM "{schema}".service_days)
             GROUP BY s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, s.in_cph_area
             ''',
             (agency_ids,),
@@ -255,13 +259,10 @@ def main():
     parser.add_argument("--destination-loc", type=Path, default=Path("config/destination_loc.txt"))
     parser.add_argument("--no-group", action="store_true",
                          help="Disable collapsing of out-of-area geometry onto destination points.")
-    parser.add_argument("--all-services", action="store_true",
-                         help="Use rail_trips (includes exception-only services) instead of regular_rail_trips.")
     add_connection_args(parser)
     args = parser.parse_args()
 
     group = not args.no_group
-    trips_view = "rail_trips" if args.all_services else "regular_rail_trips"
 
     if group:
         cph_area = load_polygon(args.polygon)
@@ -273,8 +274,10 @@ def main():
     classify = make_classifier(cph_area, destinations, group)
 
     conn = connect_from_args(args)
-    line_features = export_lines(conn, args.schema, args.agency, classify, group, trips_view)
-    stop_features = export_stops(conn, args.schema, args.agency, classify, group, trips_view)
+    require_table(conn, args.schema, "service_days",
+                  f"python py/derive_service_days.py --schema {args.schema}")
+    line_features = export_lines(conn, args.schema, args.agency, classify, group)
+    stop_features = export_stops(conn, args.schema, args.agency, classify, group)
     conn.close()
 
     feature_collection = {
@@ -283,7 +286,7 @@ def main():
     }
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    suffix = ("_nogroup" if args.no_group else "") + ("_allservices" if args.all_services else "")
+    suffix = "_nogroup" if args.no_group else ""
     out_path = args.out_dir / f"{args.schema}_agency_{'_'.join(args.agency)}{suffix}.geojson"
     with open(out_path, "w") as f:
         json.dump(feature_collection, f)

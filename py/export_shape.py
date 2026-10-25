@@ -6,7 +6,7 @@ Export a single shape_id from the raw `shapes` table as a GeoJSON LineString.
 No joins — just the shape's own points, in order.
 
 Usage:
-    python export_shape.py --schema gtfs_20260921 --shape 2345
+    python py/export_shape.py --schema gtfs_20260921 --shape 2345
 """
 
 import argparse

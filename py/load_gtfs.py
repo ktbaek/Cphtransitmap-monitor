@@ -6,7 +6,7 @@ Load a raw Rejseplanen GTFS snapshot into its own PostgreSQL schema
 (one schema per fetch, e.g. gtfs_20260921), using native COPY. 
 
 Usage:
-    python load_gtfs.py --gtfs-dir /path/to/unzipped_gtfs --snapshot-date 2026-09-21
+    python py/load_gtfs.py --gtfs-dir /path/to/unzipped_gtfs --snapshot-date 2026-09-21
 
 Connection: reads config/db.yml by default (matching your existing
 config), or pass --dsn / --config explicitly.
@@ -208,7 +208,7 @@ def main():
               f"(stops.in_cph_area will not exist). Pass --polygon to point elsewhere.")
 
     conn.close()
-    print(f"\nDone. Next: python create_views.py --schema {schema}")
+    print(f"\nDone. Next: python py/create_views.py --schema {schema}")
 
 
 if __name__ == "__main__":

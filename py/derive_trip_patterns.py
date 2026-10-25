@@ -7,29 +7,36 @@ route/direction in a loaded GTFS snapshot schema. A trip pattern is
 composed of all trips that are identical with regard to their stop
 sequence.
 
+Requires "{schema}".service_days (see derive_service_days.py).
+
+Covers the whole feed, not a single week: a pattern is a property of the
+trips, and when it runs is recorded separately in pattern_days
+(derive_pattern_days.py). A trip is included if its service runs on at least
+one day in service_days. This replaces the earlier rule that excluded every
+trip whose service has an all-zero weekly calendar: services encoded purely
+through calendar_dates.txt (which includes regular service for some
+agencies, and new timetables starting mid-feed) are now included, and
+services that never run are left out. Short-lived variants (diversions,
+one-off services) are included too; pattern_days tells them apart from
+permanent patterns.
+
 Creates/replaces "{schema}".trip_patterns with columns:
     pattern_id, route_id, route_short_name, direction_id,
     first_stop, last_stop, stop_ids, stop_names, stop_in_cph_area
-    (arrays, in visiting order), n_trips, trip_ids (which trips run this
-    exact pattern)
+    (arrays, in visiting order), n_trips (trips running this exact pattern
+    in the whole feed), trip_ids (which trips run this exact pattern)
 
-pattern_id is a stable-within-this-table row identifier (not stable across
-snapshots) — used by derive_stop_triplets.py to join stops within one
-pattern's array without drifting into a different pattern of the same
-route/direction.
+pattern_id is a row identifier, unique within this table (not stable across
+snapshots, and not stable if the table is re-derived) — used by
+derive_stop_triplets.py, derive_pattern_days.py and the saved map check
+findings. Re-deriving this table therefore means re-running
+derive_stop_triplets.py and derive_pattern_days.py, and the map check.
 
 first_stop/last_stop are just stop_names[1]/stop_names[-1], kept as their
 own columns so a pattern's rough extent is visible without expanding
 stop_names.
 
 trip_headsign is not part of the grouping.
-
-Trips whose service_id has an all-zero weekly calendar (no day of the week
-set) are excluded by using view regular_rail_trips (see create_views.py) 
-These are typically services defined purely through
-one-off calendar_dates.txt exceptions (holiday specials, event trains)
-rather than a recurring pattern, and aren't representative of the network's
-regular topology.
 
 Only patterns that touch the area at all are kept — a route entirely
 outside Copenhagen (fully-external DSB regional/IC lines, mainly) is
@@ -47,20 +54,28 @@ A route/direction with more than one row here has more than one distinct
 stop sequence in service (branches, skip-stop, short-turns, etc.).
 
 Usage:
-    python derive_trip_patterns.py --schema gtfs_20260921
+    python py/derive_trip_patterns.py --schema gtfs_20261019
 """
 
 import argparse
 
 from gtfs_common import add_connection_args, connect_from_args
+from gtfs_weeks import require_table
 
 
 def derive_trip_patterns(conn, schema: str):
+    require_table(conn, schema, "service_days",
+                  f"python py/derive_service_days.py --schema {schema}")
+
     with conn.cursor() as cur:
         cur.execute(f'DROP TABLE IF EXISTS "{schema}".trip_patterns')
         cur.execute(f'''
             CREATE TABLE "{schema}".trip_patterns AS
-            WITH trip_seqs AS (
+            WITH active_services AS (
+                SELECT DISTINCT service_id
+                FROM "{schema}".service_days
+            ),
+            trip_seqs AS (
                 SELECT
                     t.trip_id,
                     t.route_id,
@@ -70,7 +85,8 @@ def derive_trip_patterns(conn, schema: str):
                     array_agg(s.stop_name ORDER BY st.stop_sequence::int) AS stop_names,
                     array_agg(s.in_cph_area ORDER BY st.stop_sequence::int) AS stop_in_cph_area,
                     bool_or(s.in_cph_area) AS touches_cph_area
-                FROM "{schema}".regular_rail_trips t
+                FROM "{schema}".rail_trips t
+                JOIN active_services USING (service_id)
                 JOIN "{schema}".stop_times st USING (trip_id)
                 JOIN "{schema}".stops s USING (stop_id)
                 JOIN "{schema}".routes r USING (route_id)
@@ -97,6 +113,7 @@ def derive_trip_patterns(conn, schema: str):
             GROUP BY route_id, route_short_name, direction_id,
                      stop_ids, stop_names, stop_in_cph_area
         ''')
+        cur.execute(f'ALTER TABLE "{schema}".trip_patterns ADD PRIMARY KEY (pattern_id)')
     conn.commit()
 
     with conn.cursor() as cur:
@@ -106,16 +123,17 @@ def derive_trip_patterns(conn, schema: str):
             GROUP BY route_short_name, direction_id
             ORDER BY route_short_name, direction_id
         ''')
-        print(f'Patterns per route/direction in "{schema}" (area-relevant only):')
+        print(f'Patterns per route/direction in "{schema}" (whole feed, area-relevant only):')
         for route_short_name, direction_id, n_patterns, n_trips in cur.fetchall():
             flag = "" if n_patterns == 1 else "  <-- multiple patterns, worth checking"
-            print(f"  {route_short_name:<8} dir={direction_id}  "
+            print(f"  {str(route_short_name):<8} dir={direction_id}  "
                   f"{n_patterns} pattern(s), {n_trips} trips{flag}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--schema", required=True, help="Snapshot schema, e.g. gtfs_20260921")
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--schema", required=True, help="Snapshot schema, e.g. gtfs_20261019")
     add_connection_args(parser)
     args = parser.parse_args()
 

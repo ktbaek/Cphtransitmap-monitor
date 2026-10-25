@@ -7,13 +7,11 @@ Depends only on the raw GTFS tables loaded by load_gtfs.py:
 
     rail_routes         routes with route_type in RAIL_ROUTE_TYPES
     rail_trips          trips on rail_routes
-    regular_rail_trips  rail_trips whose service_id has at least one weekday set
-                        in calendar (excludes exception-only services)
     rail_stop_times     stop_times on rail_trips
     rail_stops          stops (and their parent stations) used by rail_stop_times
 
 Usage:
-    python create_views.py --schema gtfs_20260921
+    python py/create_views.py --schema gtfs_20260921
 """
 
 import argparse
@@ -37,13 +35,6 @@ def create_views(conn, schema: str):
             SELECT t.* FROM "{schema}".trips t
             JOIN "{schema}".rail_routes r ON t.route_id = r.route_id;
 
-            CREATE OR REPLACE VIEW "{schema}".regular_rail_trips AS
-            SELECT t.* FROM "{schema}".rail_trips t
-            JOIN "{schema}".calendar c USING (service_id)
-            WHERE c.monday = '1' OR c.tuesday = '1' OR c.wednesday = '1'
-               OR c.thursday = '1' OR c.friday = '1' OR c.saturday = '1'
-               OR c.sunday = '1';
-
             CREATE OR REPLACE VIEW "{schema}".rail_stop_times AS
             SELECT st.* FROM "{schema}".stop_times st
             JOIN "{schema}".rail_trips t ON st.trip_id = t.trip_id;
@@ -59,7 +50,7 @@ def create_views(conn, schema: str):
         ''')
     conn.commit()
     print(f'Views created in schema "{schema}": rail_routes, rail_trips, '
-          f'regular_rail_trips, rail_stop_times, rail_stops')
+          f'rail_stop_times, rail_stops')
 
 
 def main():

@@ -4,3 +4,4 @@ config/db.yml
 CLAUDE.md
 __pycache__/
 data/GTFS*
+.Rproj.user

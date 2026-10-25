@@ -17,17 +17,27 @@ Reports, per route: mismatches (GTFS category differs from the map's
 expectation) and map exceptions for a stop the route doesn't serve at all
 (GTFS has no rows for that route/stop).
 
+Checks one week (Monday-to-Sunday, given as the date of its Monday with
+--week). Requires stop_service_pattern for that week
+(derive_service_pattern.py). If --week is omitted, stop_service_pattern must
+hold exactly one week. Service categories depend on the week's actual
+service, so use a week without public holidays; a holiday inside the week
+can turn a weekday into a "Sunday" and change a stop's category.
+
 Usage:
-    python check_map_service_patterns.py --schema gtfs_20260921
+    python py/check_map_service_patterns.py --schema gtfs_20261019
+    python py/check_map_service_patterns.py --schema gtfs_20261019 --week 2026-12-14
 """
 
 import argparse
 from collections import defaultdict
+from datetime import timedelta
 from pathlib import Path
 
 import yaml
 
 from gtfs_common import add_connection_args, connect_from_args
+from gtfs_weeks import pick_week
 
 
 def normalize_name(name: str) -> str:
@@ -47,14 +57,15 @@ def load_expectations(path: Path):
     return default, agencies, routes
 
 
-def fetch_actual(conn, schema: str, agencies):
+def fetch_actual(conn, schema: str, agencies, week_start):
     with conn.cursor() as cur:
         cur.execute(f'''
             SELECT sp.route_short_name, sp.stop_name, sp.service_category
             FROM "{schema}".service_pattern sp
             JOIN "{schema}".routes r USING (route_id)
             WHERE r.agency_id = ANY(%s)
-        ''', (agencies,))
+              AND sp.week_start = %s
+        ''', (agencies, week_start))
         rows = cur.fetchall()
     # {route_short_name: {normalized_stop_name: (original_stop_name, category)}}
     actual = defaultdict(dict)
@@ -108,8 +119,11 @@ def print_report(report, routes_with_no_data):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--schema", required=True, help="Snapshot schema, e.g. gtfs_20260921")
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--schema", required=True, help="Snapshot schema, e.g. gtfs_20261019")
+    parser.add_argument("--week", help="Monday of the week to check, YYYY-MM-DD; must exist "
+                                       "in stop_service_pattern (default: its only week)")
     parser.add_argument("--patterns", type=Path, default=Path("config/map_service_patterns.yml"))
     add_connection_args(parser)
     args = parser.parse_args()
@@ -117,12 +131,16 @@ def main():
     default, agencies, routes = load_expectations(args.patterns)
 
     conn = connect_from_args(args)
-    actual = fetch_actual(conn, args.schema, agencies)
+    hint = f"python py/derive_service_pattern.py --schema {args.schema} --week <monday>"
+    week_start = pick_week(conn, args.schema, "stop_service_pattern", args.week, hint)
+    actual = fetch_actual(conn, args.schema, agencies, week_start)
     conn.close()
 
     if not actual:
-        raise SystemExit(f"No service_pattern rows found for agencies {agencies}")
+        raise SystemExit(f"No service_pattern rows found for agencies {agencies} "
+                         f"in week {week_start}")
 
+    print(f'Schema "{args.schema}", week {week_start} .. {week_start + timedelta(days=6)}')
     report = check(default, routes, actual)
     routes_with_no_data = set(routes) - set(actual)
     print_report(report, routes_with_no_data)

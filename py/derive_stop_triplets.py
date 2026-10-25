@@ -7,8 +7,10 @@ Builds (prev_stop, stop, next_stop) triplets from trip_patterns.
 Requires "{schema}".trip_patterns to already exist (run
 derive_trip_patterns.py first) — triplets are built from it, so they
 inherit every filter already baked into that table: area restriction,
-pass-through-stop exclusion, and calendar-based exclusion of
-exception-only services.
+pass-through-stop exclusion, and the requirement that a trip's service
+runs on at least one day (service_days). Covers the whole feed, not a
+single week; when each pattern runs is in pattern_days
+(derive_pattern_days.py).
 
 Creates one table:
 
@@ -17,18 +19,25 @@ Creates one table:
       prev_stop_id = NULL, the last has next_stop_id = NULL. These NULLs
       are meaningful (route termini), not missing data, and are kept
       rather than filtered out, since a terminus changing between
-      snapshots is itself a real network change.
+      periods is itself a real network change.
+
+pattern_id refers to the trip_patterns row as it is now: if trip_patterns is
+re-derived, re-run this script too.
 
 Usage:
-    python derive_stop_triplets.py --schema gtfs_20260921
+    python py/derive_stop_triplets.py --schema gtfs_20261019
 """
 
 import argparse
 
 from gtfs_common import add_connection_args, connect_from_args
+from gtfs_weeks import require_table
 
 
 def derive_stop_triplets(conn, schema: str):
+    require_table(conn, schema, "trip_patterns",
+                  f"python py/derive_trip_patterns.py --schema {schema}")
+
     with conn.cursor() as cur:
         cur.execute(f'DROP TABLE IF EXISTS "{schema}".stop_triplets')
         cur.execute(f'''
@@ -60,6 +69,7 @@ def derive_stop_triplets(conn, schema: str):
             LEFT JOIN pattern_stops next
               ON next.pattern_id = curr.pattern_id AND next.ord = curr.ord + 1
         ''')
+        cur.execute(f'CREATE INDEX ON "{schema}".stop_triplets (pattern_id)')
 
     conn.commit()
 
@@ -71,8 +81,9 @@ def derive_stop_triplets(conn, schema: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--schema", required=True, help="Snapshot schema, e.g. gtfs_20260921")
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--schema", required=True, help="Snapshot schema, e.g. gtfs_20261019")
     add_connection_args(parser)
     args = parser.parse_args()
 

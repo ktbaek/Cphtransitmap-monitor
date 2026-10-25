@@ -94,7 +94,7 @@ python py/check_map_corridors.py --schema gtfs_YYYYMMDD
 python py/check_map_corridors.py --schema gtfs_YYYYMMDD --from YYYY-MM-DD --to YYYY-MM-DD
 python py/check_map_service_patterns.py --schema gtfs_YYYYMMDD --week YYYY-MM-DD
 ```
-The corridor check covers the whole feed unless you give a window, and prints one numbered finding per line, as well as the conflicting patterns that run. It also saves the findings (see [Findings](#findings)). The service pattern check covers one week and only prints. Read the output for:
+The corridor check covers the whole feed unless you give a window, and prints one numbered finding per line, as well as the conflicting patterns that run. It also saves the findings (see [Findings](#findings)). The service pattern check covers one week and only prints - check e.g. the first and last whole week. Read the output for:
 - **Corridor stops not in feed**: a stop name in `map_corridors.yml` that isn't in the feed's `rail_stops`. Could be a closed or renamed station, or a typo in the corridor file. These stops are left out of the corridor's checks, so the other findings below still run.
 - **Unknown stops**: served, but on no map corridor in scope. Usually a new or renamed station. A rename often also appears under "Corridor stops not in feed" with the old name.
 - **Conflicts**: a triplet the map's corridors can't explain, meaning routing has changed, the route is a temporary diversion, or the map is wrong. See [step 5](#5-judge-the-findings).

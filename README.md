@@ -36,7 +36,7 @@ Area polygons live in `config/` as GeoJSON files.
 
 ## When a new feed arrives
 
-Run all commands from the project root (scripts read `config/` relative to it); the Python scripts live in `py/`. Dates: `YYYY-MM-DD` in the feed folder name, `--snapshot-date`, `--week`, `--from` and `--to`; `YYYYMMDD` in the schema name (`gtfs_YYYYMMDD`). Replace them with the dates that apply.
+Run all commands from the project root. Dates: `YYYY-MM-DD` in the feed folder name, `--snapshot-date`, `--week`, `--from` and `--to`; `YYYYMMDD` in the schema name (`gtfs_YYYYMMDD`). Replace them with the dates that apply.
 
 ### 1. Get and unpack the feed
 Download the GTFS zip from Rejseplanen Labs (requires authorization, see [Data](#data)) and unzip it into `<data/GTFS-YYYY-MM-DD/>`. Check that the expected `.txt` files are present.
@@ -52,7 +52,7 @@ python py/derive_pattern_days.py --schema gtfs_YYYYMMDD
 python py/derive_service_pattern.py --schema gtfs_YYYYMMDD --all-weeks
 ```
 
-`--week` is the Monday of the week to derive; Generally use `--all-weeks` (see [Weeks](#weeks)).
+`--week` is the Monday of the week to derive; Use `--all-weeks` when deriving service patterns (see [Weeks](#weeks)).
 
 Each script needs the ones above it, with two exceptions: `derive_service_pattern.py` only needs `derive_service_days.py`, and `derive_stop_triplets.py` and `derive_pattern_days.py` only need `derive_trip_patterns.py` (either order). A script stops with a message naming the missing step if a prerequisite table doesn't exist. If you re-run `derive_trip_patterns.py`, re-run `derive_stop_triplets.py`, `derive_pattern_days.py` and the corridor check too, because `pattern_id`s change.
 
@@ -83,7 +83,7 @@ ORDER BY 2, 1;
 ```
 The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Beyond that date, checks are missing data, so re-fetch when the next timetable is published.
 
-Plot the third query (one panel per agency) with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png`, and also `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
+Plot the third query (one panel per agency) with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png` and  `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
 - **An agency that stops early.** Its next timetable isn't in this feed yet, so plan to re-fetch once it is published. Checks against the map for the later weeks would show its corridors as unserved, which is missing data and not a closure.
 - **A step change** (e.g. mid-December): a timetable change. Run the checks separately for the periods before and after it (`--from`/`--to`, and one `--week` per period).
 - **Dips** on public holidays. Avoid those weeks for service patterns.

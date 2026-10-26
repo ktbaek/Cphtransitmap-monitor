@@ -42,8 +42,18 @@ Run all commands from the project root. Dates: `YYYY-MM-DD` in the feed folder n
 Download the GTFS zip from Rejseplanen Labs (requires authorization, see [Data](#data)) and unzip it into `<data/GTFS-YYYY-MM-DD/>`. Check that the expected `.txt` files are present.
 
 ### 2. Load and derive
+Load the feed:
 ```bash
 python py/load_gtfs.py --gtfs-dir data/GTFS-YYYY-MM-DD --snapshot-date YYYY-MM-DD
+```
+
+Then derive everything in one go with [`derive_all.py`](#derive_allpy), which runs the steps below in order and stops at the first one that fails:
+```bash
+python py/derive_all.py --schema gtfs_YYYYMMDD
+```
+
+Or run the steps one at a time, for example to re-run just one of them:
+```bash
 python py/create_views.py --schema gtfs_YYYYMMDD
 python py/derive_service_days.py --schema gtfs_YYYYMMDD
 python py/derive_trip_patterns.py --schema gtfs_YYYYMMDD
@@ -52,9 +62,9 @@ python py/derive_pattern_days.py --schema gtfs_YYYYMMDD
 python py/derive_service_pattern.py --schema gtfs_YYYYMMDD --all-weeks
 ```
 
-`--week` is the Monday of the week to derive; Use `--all-weeks` when deriving service patterns (see [Weeks](#weeks)).
+`--week` is the Monday of the week to derive; Use `--all-weeks` when deriving service patterns (see [Weeks](#weeks)). `derive_all.py` derives all weeks unless you give `--week`.
 
-Each script needs the ones above it, with two exceptions: `derive_service_pattern.py` only needs `derive_service_days.py`, and `derive_stop_triplets.py` and `derive_pattern_days.py` only need `derive_trip_patterns.py` (either order). A script stops with a message naming the missing step if a prerequisite table doesn't exist. If you re-run `derive_trip_patterns.py`, re-run `derive_stop_triplets.py`, `derive_pattern_days.py` and the corridor check too, because `pattern_id`s change.
+Each script needs the ones above it, with two exceptions: `derive_service_pattern.py` only needs `derive_service_days.py`, and `derive_stop_triplets.py` and `derive_pattern_days.py` only need `derive_trip_patterns.py` (either order). A script stops with a message naming the missing step if a prerequisite table doesn't exist. If you re-run `derive_trip_patterns.py` on its own, re-run `derive_stop_triplets.py`, `derive_pattern_days.py` and the corridor check too, because `pattern_id`s change (`derive_all.py` re-runs all derive steps).
 
 `load_gtfs.py` refuses to overwrite an existing schema. Use `--force` only if you want to drop and reload that snapshot.
 
@@ -242,6 +252,22 @@ The bands are the windows the script tests, not full coverage of the day: peak 0
   | `--week` | first full week of the feed | Monday of a week to derive, `YYYY-MM-DD`; repeat the flag for several weeks |
   | `--all-weeks` | *(flag)* | Derive every full week inside the feed's service days (instead of `--week`) |
   | `--min-days` | `1` | A service counts for a week if it runs on at least this many days of it |
+
+#### `derive_all.py`
+Runs all the derive steps above for one snapshot, in pipeline order: `views` (`create_views.py`), `service_days`, `trip_patterns`, `stop_triplets`, `pattern_days` and `service_pattern`. It stops at the first step that fails and says which one, and prints the time each step took. Every step replaces its own output, so re-running it on the same schema is safe. It does not load the feed (`load_gtfs.py` refuses to overwrite a schema) and does not run the map checks. The individual scripts still work on their own.
+
+The `service_pattern` step is the only weekly one. It derives every full week of the feed unless you give `--week`.
+
+  | Option | Default | Description |
+  | :--- | :--- | :--- |
+  | `--schema` | *Required* | Snapshot schema, e.g. `gtfs_20260921` |
+  | `--only` | *(all steps)* | Run only this step; repeat the flag for several. Steps: `views`, `service_days`, `trip_patterns`, `stop_triplets`, `pattern_days`, `service_pattern` |
+  | `--skip` | *(none)* | Leave this step out; repeat the flag for several |
+  | `--week` | every full week of the feed | Monday of a week for the `service_pattern` step, `YYYY-MM-DD`; repeat the flag for several weeks |
+  | `--all-weeks` | *(flag)* | Derive every full week of the feed (the default without `--week`) |
+  | `--min-days` | `1` | A service counts for a week if it runs on at least this many days of it |
+
+Steps always run in pipeline order, whatever order the flags are given in. For example, `--only service_pattern --all-weeks` re-derives just the service patterns, and `--skip views` leaves out the view creation.
 
 ### Visualization helpers
 These scripts generate GeoJSON files of the shapes in the GTFS data, for a visual overview. They are not required for any analysis.

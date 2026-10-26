@@ -43,10 +43,10 @@ outside the area of interest (on a fully-external DSB regional/IC line,
 mainly) is left out, same restriction as trip_patterns.
 
 Usage:
-    python py/derive_service_pattern.py --schema gtfs_20261019
-    python py/derive_service_pattern.py --schema gtfs_20261019 --week 2026-12-14
-    python py/derive_service_pattern.py --schema gtfs_20261019 --week 2026-10-19 --week 2026-12-14
-    python py/derive_service_pattern.py --schema gtfs_20261019 --all-weeks --min-days 2
+    python derive_service_pattern.py --schema gtfs_20261019
+    python derive_service_pattern.py --schema gtfs_20261019 --week 2026-12-14
+    python derive_service_pattern.py --schema gtfs_20261019 --week 2026-10-19 --week 2026-12-14
+    python derive_service_pattern.py --schema gtfs_20261019 --all-weeks --min-days 2
 """
 
 import argparse
@@ -247,6 +247,22 @@ def create_service_pattern_view(conn, schema: str):
     print(f'View "{schema}".service_pattern created (filter it on week_start).')
 
 
+def derive_service_patterns(conn, schema: str, week_starts, min_days: int = 1):
+    """Derive each week in its own transaction, then (re)create the view. Commits."""
+    for week_start in week_starts:
+        print(f"\n=== Week {week_start} ===")
+        try:
+            derive_service_pattern(conn, schema, week_start, min_days)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            print(f"Week {week_start} failed; its rows were left unchanged.")
+            raise
+
+    create_service_pattern_view(conn, schema)
+    conn.commit()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -267,19 +283,7 @@ def main():
 
     conn = connect_from_args(args)
     week_starts = choose_weeks(conn, args.schema, args.week, args.all_weeks)
-
-    for week_start in week_starts:
-        print(f"\n=== Week {week_start} ===")
-        try:
-            derive_service_pattern(conn, args.schema, week_start, args.min_days)
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            print(f"Week {week_start} failed; its rows were left unchanged.")
-            raise
-
-    create_service_pattern_view(conn, args.schema)
-    conn.commit()
+    derive_service_patterns(conn, args.schema, week_starts, args.min_days)
     conn.close()
 
 

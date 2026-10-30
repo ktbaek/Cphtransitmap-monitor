@@ -6,7 +6,7 @@ mapversion: "1.4.2"
 groups:
   metro:    {agencies: ['319']}
   stog:     {agencies: ['318']}
-  dsb:      {agencies: ['203', '471', '401', '451']}
+  dsb:      {agencies: ['203', '401', '451']}
   lokaltog: {agencies: ['316']}
   letbane:  {agencies: ['481']}
 

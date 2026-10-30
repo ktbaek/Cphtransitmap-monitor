@@ -273,18 +273,13 @@ Steps always run in pipeline order, whatever order the flags are given in. For e
 These scripts generate GeoJSON files of the shapes in the GTFS data, for a visual overview. They are not required for any analysis.
 
 #### `export_geojson.py`
-Shapes + stops per agency, with far-away geometry grouped onto
-`config/destination_*.geojson` points to keep files readable. Only trips whose service has at least one day in `service_days` are used, so it requires `derive_service_days.py`.
+Shapes + stops per agency, at full coordinate detail. Only trips whose service has at least one day in `service_days` are used, so it requires `derive_service_days.py`.
 
   | Option | Default | Description |
   | :--- | :--- | :--- |
   | `--schema` | *Required* | Snapshot schema, e.g. `gtfs_20260921` |
   | `--agency` | *Required* | Agency id to export; repeat the flag for multiple agencies |
   | `--out-dir` | `output` | Output directory |
-  | `--polygon` | `config/cph_area.geojson` | Path to Copenhagen area polygon |
-  | `--destinations-dir` | `config` | Directory containing `destination_*.geojson` polygons |
-  | `--destination-loc` | `config/destination_loc.txt` | Replacement coordinates for each destination polygon |
-  | `--no-group` | *(flag)* | Disable collapsing of out-of-area geometry onto destination points |
 
 #### `export_shape.py`
 A single `shape_id`, no joins, for quick spot checks.
@@ -379,7 +374,7 @@ routes:
 - **`pattern_id`s are short-lived.** They are only valid for the current `trip_patterns`, so re-run the downstream steps and the corridor check after re-deriving it. Don't store them.
 - **Holidays.** `calendar_dates.txt` is modelled in `service_days`, but public holidays are not a separate day type, so a holiday inside a week distorts that week's service categories. Pick weeks without holidays.
 - **Høvelte St.** appears in the feed as a stop but is intentionally not shown on the map.
-- **Shapes.** When visually inspecting routes, note that not all shapes in the feed's `shapes.txt` provide geographical detail between stops.
+- **Shapes.** When visually inspecting routes, note that shapes for agency 451 (Snälltåget AB) does not provide geographical detail between stops.
 
 ## To do
 - `transfers.txt` is loaded (`load_gtfs.py`'s `GTFS_FILES`) into a raw `transfers` table, but nothing reads it yet. Could be used to check rail-to-rail interchanges against the map's drawn connections (e.g. Nørreport St. ↔ Nørreport St. (Metro)).

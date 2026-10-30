@@ -82,7 +82,7 @@ pattern_agency_days |>
     date_breaks = "1 week",
     date_minor_breaks = "1 day",
     limits = as_date(calendar_limits)) +
-  scale_color_viridis_c(transform = "log10")
+  scale_color_viridis_c(transform = "log10") +
   theme(
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
     axis.text.y = element_text(size = 6)

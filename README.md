@@ -110,7 +110,7 @@ The corridor check covers the whole feed unless you give a window, and prints on
 - **Listed routes with no triplets**: usually a typo, a renamed route_short_name, or a route that's been discontinued.
 - **Service category mismatches**: a change in frequency pattern for a stop, in the chosen week.
 
-*Known false positives*: Høvelte St., early morning trips of S-tog route H from Frederikssund St., afternoon trips of S-tog route F to Klampenborg St, and diversions through København Syd St. See [Gotchas](#gotchas).
+*Known false positives*: Høvelte St., early morning trips of S-tog route H from Frederikssund St., afternoon trips of S-tog route F to Klampenborg St., and diversions through København Syd St. See [Gotchas](#gotchas).
 
 ### 5. Judge the findings
 Most conflicts are probably temporary such as diversions and track work. What separates them from a real change is when they run, so plot the findings against `pattern_days` (the saved `map_check_findings` table joins to it on `pattern_id`). [`R/plot_conflicts.R`](R/plot_conflicts.R) does this: set `gtfs_schema` at the top, and it writes `output/conflicts_<schema>.png` with one row per finding and a dot per day the patterns run (dot size is `n_trips`), for the whole feed. The plot's x-axis is limited to the range of `service_days`. The query behind it is:

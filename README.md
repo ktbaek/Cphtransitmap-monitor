@@ -12,7 +12,7 @@ This project detects changes to the Copenhagen-area rail network using a [GTFS](
 Access to the data requires authorization from Rejseplanen Labs. The GTFS data is not included in this repository and is subject to Rejseplanen Labs' terms. Unzipped feeds go in `data/`.
 
 ## Setup
-Python 3.14 and PostgreSQL 17.9 (no PostGIS needed). 
+Python 3.14 and PostgreSQL 17.9. 
 
 ```bash
 python -m venv .venv
@@ -31,8 +31,6 @@ default:
   dbname: <gtfs>
   user: <user>
 ```
-
-Area polygons live in `config/` as GeoJSON files.
 
 ## When a new feed arrives
 
@@ -91,9 +89,9 @@ JOIN gtfs_<new>.agency a ON a.agency_id = r.agency_id
 GROUP BY 1, 2
 ORDER BY 2, 1;
 ```
-The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Beyond that date, checks are missing data, so re-fetch when the next timetable is published.
+The first query gives *Feed ends* for the [Status](#status). The second gives each agency's last day; *Map verified until* is the earliest of these among the agencies on the map (those in `map_corridors.yml`). Beyond that date, checks will be missing data, so re-fetch when the next timetable is published.
 
-Plot the third query (one panel per agency) with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png` and  `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
+Plot the third query with [`R/plot_calendar.R`](R/plot_calendar.R). Set `gtfs_schema` at the top of the script first. It writes `output/agency_trips_<schema>.png` and  `output/calendar_expections_<schema>.png`, which shows each rail service's `calendar_dates` additions and removals. Look for:
 - **An agency that stops early.** Its next timetable isn't in this feed yet, so plan to re-fetch once it is published. Checks against the map for the later weeks would show its corridors as unserved, which is missing data and not a closure.
 - **A step change** (e.g. mid-December): a timetable change. Run the checks separately for the periods before and after it (`--from`/`--to`, and one `--week` per period).
 - **Dips** on public holidays. Avoid those weeks for service patterns.
@@ -112,7 +110,7 @@ The corridor check covers the whole feed unless you give a window, and prints on
 - **Listed routes with no triplets**: usually a typo, a renamed route_short_name, or a route that's been discontinued.
 - **Service category mismatches**: a change in frequency pattern for a stop, in the chosen week.
 
-*Known false positives*: Høvelte St., early morning trips of S-tog route H from Frederikssund St., afternoon trips of S-tog route F to Klampenborg St. See [Gotchas](#gotchas).
+*Known false positives*: Høvelte St., early morning trips of S-tog route H from Frederikssund St., afternoon trips of S-tog route F to Klampenborg St, and diversions through København Syd St. See [Gotchas](#gotchas).
 
 ### 5. Judge the findings
 Most conflicts are probably temporary such as diversions and track work. What separates them from a real change is when they run, so plot the findings against `pattern_days` (the saved `map_check_findings` table joins to it on `pattern_id`). [`R/plot_conflicts.R`](R/plot_conflicts.R) does this: set `gtfs_schema` at the top, and it writes `output/conflicts_<schema>.png` with one row per finding and a dot per day the patterns run (dot size is `n_trips`), for the whole feed. The plot's x-axis is limited to the range of `service_days`. The query behind it is:
@@ -123,9 +121,6 @@ FROM gtfs_<new>.map_check_findings f
 JOIN gtfs_<new>.pattern_days pd USING (pattern_id)
 WHERE f.kind = 'conflict';
 ```
-- **A few days, then gone**: a diversion. No change to the map.
-- **Runs through to the end of the feed, or from some date onwards**: a real change (a timetable change or a new routing). The map, or the corridor file, needs to follow.
-- **Every day for the whole period**: the map or the corridor file is wrong.
 
 ### 6. Update the map and record the result
 1. Create a branch for this snapshot: `git switch -c sync-gtfs_YYYYMMDD`. Until you merge it, `main` still describes the published map.
@@ -378,8 +373,6 @@ routes:
 
 ## To do
 - `transfers.txt` is loaded (`load_gtfs.py`'s `GTFS_FILES`) into a raw `transfers` table, but nothing reads it yet. Could be used to check rail-to-rail interchanges against the map's drawn connections (e.g. Nørreport St. ↔ Nørreport St. (Metro)).
-- Treat public holidays as their own day type in the service patterns.
-- Other exploratory SQL queries to aid understanding of the network.
 
 ## License
 

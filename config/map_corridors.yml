@@ -2,6 +2,7 @@
 # Stop names must match rail_stops.stop_name exactly (metro stations end in "(Metro)"), runs of whitespace tolerated.
 # Triplets are only checked against corridors of their own group or route (if stated).
 mapversion: "1.4.1"
+mapdate: "2026-09-30"
 
 groups:
   metro:    {agencies: ['319']}

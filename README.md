@@ -127,7 +127,7 @@ WHERE f.kind = 'conflict';
 2. Decide per finding whether the feed or the map is right.
 3. Edit `config/map_corridors.yml` and `config/map_service_patterns.yml` to describe the map as it *will* look after the update (see [Config files](#config-files)). Re-run [step 4](#4-check-against-the-map) until every remaining finding is one you have judged to be temporary. `git diff main` on the two files is now the list of changes to make on the map.
 4. Update the map, and check that it matches the YAML.
-5. When the updated map is published, bump `mapversion` in the YAML files, and update the [Status](#status) line, then commit: `git commit -am "Sync map to gtfs_YYYYMMDD (mapversion X.Y.Z)"`.
+5. When the updated map is published, bump `mapversion` in the YAML files, and update the [Status](#status) line, then commit: `git commit -am "Sync map to gtfs_YYYYMMDD (mapversion X.Y.Z, mapdate YYYY-MM-DD)"`.
 6. Switch to main (`git switch main`), merge the branch (`git merge sync-gtfs_YYYYMMDD`) and then delete it (`git branch -d sync-gtfs_YYYYMMDD`). 
 
 ## Pipeline

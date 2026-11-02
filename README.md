@@ -32,6 +32,10 @@ default:
   user: <user>
 ```
 
+## License
+
+The code and configuration in this repository are released under the MIT License (see `LICENSE`). This does not cover the [Copenhagen Transit Map](https://cphtransitmap.dk/en) itself, including its design, data and name, which are not part of this repository. The GTFS data is not included and is subject to Rejseplanen Labs' terms.
+
 ## When a new feed arrives
 
 Run all commands from the project root. Dates: `YYYY-MM-DD` in the feed folder name, `--snapshot-date`, `--week`, `--from` and `--to`; `YYYYMMDD` in the schema name (`gtfs_YYYYMMDD`). Replace them with the dates that apply.
@@ -373,7 +377,3 @@ routes:
 
 ## To do
 - `transfers.txt` is loaded (`load_gtfs.py`'s `GTFS_FILES`) into a raw `transfers` table, but nothing reads it yet. Could be used to check rail-to-rail interchanges against the map's drawn connections (e.g. Nørreport St. ↔ Nørreport St. (Metro)).
-
-## License
-
-The code and configuration in this repository are released under the MIT License (see `LICENSE`). This does not cover the [Copenhagen Transit Map](https://cphtransitmap.dk/en) itself, including its design, data and name, which are not part of this repository. The GTFS data is not included and is subject to Rejseplanen Labs' terms.
